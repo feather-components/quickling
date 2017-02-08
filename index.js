@@ -7,6 +7,8 @@ function $(selector, context){
         }else{
             var remove = false;
 
+            context = $(context)[0];
+
             if(!context.id){
                 remove = true;
                 context.id = '__quickling__';
