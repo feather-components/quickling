@@ -126,11 +126,14 @@ Quickling.prototype = {
         Router.each(elements, hide);
         self.loader && self.loader.abort();
 
-        var element = Array.prototype.filter.call(elements, function(element){
-            return element.getAttribute('data-url') == url;
-        });
+        var element;
 
-        element = element[0];
+        for(var i = 0; i < elements; i++){
+            if(elements[i].getAttribute('data-url') == url){
+                element = elements[i];
+                break;
+            }
+        }
 
         self.trigger('send:before', hash);
 
