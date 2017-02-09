@@ -28,14 +28,16 @@ index.html
 
     <script>
     require.async('quickling', function(Quickling){
-        Quickling.init('a.quickling', '#ajaxify-container').on('send:before', function(url){
+        Quickling('a.quickling', '#ajaxify-container').on('send:before', function(url){
             //通过url做一些处理逻辑，比如，给对应的菜单加上状态
             console.log(arguments);
         }).on('send:back', function(){
             console.log(arguments);
         }).on('empty', function(){
             alert('empty');
-        })
+        }).on('go', function(url, from){
+            console.log(url, from);
+        }).cache(10 * 1000 /*当前进后退时，内容缓存10秒*/)
     });
     </script>
 </body>
@@ -44,10 +46,10 @@ index.html
 
 ### Api
 
-* init(selector/*符合条件的选择器*/, container/*加载内容的容器*/): 初始化
+* Quickling(selector:符合条件的选择器, container:加载内容的容器): 初始化
 * listen(container): 手动监听元素中符合条件的链接
 * clear(container, removeChild/*是否删除子元素*/)：移除监听
-* load(url|element)：手动加载一个url
+* load(url, force:强制清空缓存)：手动加载一个url
 * on(event, callback): 监听自定义事件
 * trigger(event, data)：手动触发事件
 
@@ -55,4 +57,6 @@ index.html
 
 * send:before：  发送前执行
 * send:back： 内容加载成功后执行
+* cache:back：使用缓存内容执行后
+* go：页面hash产生变化时
 * empty：url为空时执行

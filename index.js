@@ -1,13 +1,23 @@
-var Pagelet = require('static/pagelet.js');
+;(function(factory){
+if(typeof define == 'function' && define.amd){
+    //seajs or requirejs environment
+    define(['router', 'static/pagelet'], factory);
+}else if(typeof module === 'object' && typeof module.exports == 'object'){
+    module.exports = factory(
+        require('router'),
+        require('static/pagelet')
+    );
+}else{
+    window.Quickling = factory(window.Router, window.Pagelet);
+}
+})(function(Router, Pagelet){
 
 function $(selector, context){
     if(typeof selector == 'string'){
         if(!context){
-            return document.querySelectorAll(selector);
+            return document.querySelectorAll(selector) || [];
         }else{
             var remove = false;
-
-            context = $(context)[0];
 
             if(!context.id){
                 remove = true;
@@ -23,44 +33,40 @@ function $(selector, context){
     }
 }
 
-function each(items, callback){
-    for(var i = 0; i < items.length; i++){
-        callback(items[i], i);
-    }
+function createElement(){
+    var element = document.createElement('div');
+    attr(element, 'class', 'quickling-container');
+    return element;
 }
 
-function on(dom, event, callback){
-    if(dom.addEventListener){
-        dom.addEventListener(event, callback, false);
-    }else{
-        dom.attachEvent('on' + event, callback);
+function attr(element, name, value){
+    if(typeof value === 'undefined'){
+        return element.getAttribute(name);
     }
+
+    element.setAttribute(name, value);
 }
 
-function remove(dom, event, callback){
-    if(dom.removeEventListener){
-        dom.removeEventListener(event, callback);
-    }else{
-        dom.detachEvent('on' + event, callback);
-    }
+function now(){
+    return (new Date).getTime();
 }
 
-var instance;
+function show(element){
+    element.style.display = 'block';
+}
 
-exports.init = function(className, container){
-    if(instance){
-        throw new Error('Quickling\'s instance must be only one!');
-    }
-
-    return new Quickling(className, container);
-};
+function hide(element){
+    element.style.display = 'none';
+}
 
 function Quickling(selector, container){
     var self = this;
 
-    self.events = {};
     self.selector = selector;
     self.container = $(container)[0];
+    self.expires = 0;
+    self.isForce = false;
+    self.router = new Router();
     self.initEvent();
     self.listen();
 }
@@ -70,103 +76,128 @@ Quickling.prototype = {
         var self = this;
         var elements = $(self.selector, container);
 
-        each(elements, function(element){
+        Router.each(elements, function(element){
             element.$listener = function(e){
-                self.load(element);
+                self.load(attr(element, 'href') || attr(element, 'data-url'), attr(element, 'data-cache') != 'true');
                 e.preventDefault ? e.preventDefault() : (window.event.returnValue = false);
             };
 
-            on(element, 'click', element.$listener);
+            Router.on(element, 'click', element.$listener);
         });
     },
 
-    clear: function(container, removeChild){
+    clear: function(container){
         var self = this;
         var elements = $(self.selector, container);
 
-        each(elements, function(element){
-            remove(element, 'click', element.$listener);
+        Router.each(elements, function(element){
+            Router.off(element, 'click', element.$listener);
         });
 
-        removeChild && (container.innerHTML = '');
+        container.innerHTML = '';
     },
 
     initEvent: function(){
         var self = this;
 
-        on(window, 'hashchange', function(e){
-            self.load();
-        });
-
-        setTimeout(function(){
-            self.load();
-        }, 0);    
-    },
-
-    load: function(item){
-        typeof item == 'object' ? this._loadByItem(item) : this._loadByUrl(item);
-    },
-
-    _loadByItem: function(item){
-        var url = item.getAttribute('href') || item.getAttribute('data-url');
-        location.hash = '#!' + url;
-    },
-
-    _loadByUrl: function(url){
-        var self = this;
-
-        if(!url){
-            if(location.hash.indexOf('#!') == -1){
-                self.trigger('empty');
-                self.clear(self.container, true);
-                return ;
-            }
-
-            url = location.hash;
-        }
-
-        if(url.indexOf('#!') > -1){
-            url = url.substring(2);
-        }
-
-        self.trigger('send:before', url);
-
-        if(self.loader){
-            self.loader.abort();
-            self.trigger('send:abort', url);
-        }
-
-        self.loader = Pagelet.load(url, function(data, status){
-            self.loader = null;
+        self.router.listen('^!?$', function(){
             self.clear(self.container, true);
-            Pagelet.append(self.container, data);
-            self.trigger('send:back', data, status);
-            setTimeout(function(){
-                self.listen(self.container);
-            }, 100);
+            self.trigger('empty');
+        });
+
+        self.router.listen('^!([\\s\\S]+)', function(hash){
+            self._loadByUrl(hash);
         });
     },
 
-    on: function(event, callback){
-        var self = this, events = self.events;
-
-        if(!events[event]){
-            events[event] = [callback];
-        }else{
-            events[event].push(callback);
+    load: function(url, force){
+        if(force){
+            this.isForce = true;
         }
 
-        return self;
+        this.router.go('!' + url);
     },
 
-    trigger: function(event){
-        var self = this, events = self.events[event] || [];
-        var args = [].slice.call(arguments, 1);
+    _loadByUrl: function(hash){
+        var url = hash.substr(1);
+        var self = this;
+        var elements = $('.quickling-container', self.container);
 
-        each(events, function(event){
-            event.apply(self, args);
+        Router.each(elements, hide);
+        self.loader && self.loader.abort();
+
+        var element = Array.prototype.filter.call(elements, function(element){
+            return element.getAttribute('data-url') == url;
         });
 
-        return self;
+        element = element[0];
+
+        self.trigger('send:before', hash);
+
+        if(!element || self.isForce 
+            || !self.expires
+            || attr(element, 'data-time') < (now() - self.expires)
+        ){
+            self.isForce = false;
+            self.loader = Pagelet.load(url, function(data, status){
+                self.loader = null;
+
+                if(!element){
+                    element = createElement();
+                    attr(element, 'data-url', url);
+                }else{
+                    self.clear(element);
+                }
+
+                self.container.appendChild(element);
+                Pagelet.append(element, data);
+                show(element);
+                attr(element, 'data-time', now());
+                self.trigger('send:back', data, status);
+                setTimeout(function(){
+                    self.listen(element);
+                }, 100);
+            });
+        }else{
+            show(element);
+            self.trigger('cache:back');
+        }        
+    },
+
+    start: function(){
+        this.router.start();
+        return this;
+    },
+
+    stop: function(){
+        this.router.stop();
+        return this;
+    },
+
+    on: function(){
+        this.router.on.apply(this.router, arguments);
+        return this;
+    },
+
+    trigger: function(){
+        this.router.trigger.apply(this.router, arguments);
+        return this;
+    },
+
+    cache: function(time){
+        this.expires = time;
+        return this;
     }
 };
+
+var instance;
+
+return function(className, container){
+    if(instance){
+        return instance;
+    }
+
+    return instance = new Quickling(className, container);
+};
+
+});

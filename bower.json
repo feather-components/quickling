@@ -2,5 +2,8 @@
     "name": "quickling",
     "desc": "feather2系统中可使用的Quickling插件",
     "main": "index.js",
-    "version": "1.0.0"
+    "version": "1.0.0",
+    "dependencies": {
+        "router": "feather-components/router"
+    }
 }
