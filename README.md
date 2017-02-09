@@ -52,6 +52,7 @@ index.html
 * load(url, force:强制清空缓存)：手动加载一个url
 * on(event, callback): 监听自定义事件
 * trigger(event, data)：手动触发事件
+* cache(expires:超时时间)：设置是否缓存，false时为不缓存
 
 ### 预设事件
 
