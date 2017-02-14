@@ -1,8 +1,5 @@
 ;(function(factory){
-if(typeof define == 'function' && define.amd){
-    //seajs or requirejs environment
-    define(['router', 'static/pagelet'], factory);
-}else if(typeof module === 'object' && typeof module.exports == 'object'){
+if(typeof module === 'object' && typeof module.exports == 'object'){
     module.exports = factory(
         require('router'),
         require('static/pagelet')
@@ -40,6 +37,7 @@ function createElement(){
 }
 
 function attr(element, name, value){
+    console.log(element);
     if(typeof value === 'undefined'){
         return element.getAttribute(name);
     }
@@ -128,8 +126,8 @@ Quickling.prototype = {
 
         var element;
 
-        for(var i = 0; i < elements; i++){
-            if(elements[i].getAttribute('data-url') == url){
+        for(var i = 0; i < elements.length; i++){
+            if(attr(elements[i], 'data-url') == url){
                 element = elements[i];
                 break;
             }
