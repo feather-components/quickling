@@ -154,7 +154,7 @@ Quickling.prototype = {
                 Pagelet.append(element, data);
                 show(element);
                 attr(element, 'data-time', now());
-                self.trigger('send:back', data, status);
+                self.trigger('send:back', [data, status]);
                 setTimeout(function(){
                     self.listen(element);
                 }, 100);
