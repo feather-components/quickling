@@ -1,5 +1,8 @@
 ;(function(factory){
-if(typeof module === 'object' && typeof module.exports == 'object'){
+if(typeof define == 'function' && define.amd){
+    //seajs or requirejs environment
+    define(['jquery', 'class', 'overlay'], factory);
+}else if(typeof module === 'object' && typeof module.exports == 'object'){
     module.exports = factory(
         require('router'),
         require('static/pagelet')
@@ -30,14 +33,7 @@ function $(selector, context){
     }
 }
 
-function createElement(){
-    var element = document.createElement('div');
-    attr(element, 'class', 'quickling-container');
-    return element;
-}
-
 function attr(element, name, value){
-    console.log(element);
     if(typeof value === 'undefined'){
         return element.getAttribute(name);
     }
@@ -49,20 +45,13 @@ function now(){
     return (new Date).getTime();
 }
 
-function show(element){
-    element.style.display = 'block';
-}
-
-function hide(element){
-    element.style.display = 'none';
-}
-
 function Quickling(selector, container){
     var self = this;
 
     self.selector = selector;
     self.container = $(container)[0];
     self.expires = 0;
+    self.caches = {};
     self.isForce = false;
     self.router = new Router();
     self.initEvent();
@@ -119,48 +108,30 @@ Quickling.prototype = {
     _loadByUrl: function(hash){
         var url = hash.substr(1);
         var self = this;
-        var elements = $('.quickling-container', self.container);
 
-        Router.each(elements, hide);
         self.loader && self.loader.abort();
-
-        var element;
-
-        for(var i = 0; i < elements.length; i++){
-            if(attr(elements[i], 'data-url') == url){
-                element = elements[i];
-                break;
-            }
-        }
-
         self.trigger('send:before', hash);
+        self.clear(self.container);
 
-        if(!element || self.isForce 
+        var cache = self.caches[url];
+
+        if(!cache || self.isForce 
             || !self.expires
-            || attr(element, 'data-time') < (now() - self.expires)
+            || cache.time < (now() - self.expires)
         ){
             self.isForce = false;
             self.loader = Pagelet.load(url, function(data, status){
                 self.loader = null;
-
-                if(!element){
-                    element = createElement();
-                    attr(element, 'data-url', url);
-                }else{
-                    self.clear(element);
-                }
-
-                self.container.appendChild(element);
-                Pagelet.append(element, data);
-                show(element);
-                attr(element, 'data-time', now());
+                Pagelet.append(self.container, data);
+                self.caches[url] = {data: data, time: now()};
                 self.trigger('send:back', [data, status]);
                 setTimeout(function(){
-                    self.listen(element);
+                    self.listen(self.container);
                 }, 100);
             });
         }else{
-            show(element);
+            Pagelet.append(self.container, cache.data);
+            self.listen(self.container);
             self.trigger('cache:back');
         }        
     },
