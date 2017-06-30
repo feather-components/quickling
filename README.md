@@ -62,7 +62,7 @@ index.html
 * go：页面hash产生变化时
 * empty：url为空时执行
 
-##注：对于js动态生成的a标签，则可以通过指定href值为hashbang的方式，进行加载， 如
+## 注：对于js动态生成的a标签，则可以通过指定href值为hashbang的方式，进行加载， 如
 
 ```html
 <a href="#!abc/def">我是js动态生成的a标签</a>
